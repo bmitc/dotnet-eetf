@@ -1,0 +1,7 @@
+# Ignore Visual Studio files
+[Bb]in/
+[Oo]bj/
+.vs/
+
+# Ignore fsdocs files
+.fsdocs/

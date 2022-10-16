@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32526.322
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ErlangExternalTermFormat", "ErlangExternalTermFormat\ErlangExternalTermFormat.fsproj", "{202002A4-0912-4FED-8F16-51235F08A16C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tests", "Tests\Tests.fsproj", "{C3D0DF61-1A22-4EEA-8A10-8FA977EAAF9B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{202002A4-0912-4FED-8F16-51235F08A16C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{202002A4-0912-4FED-8F16-51235F08A16C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{202002A4-0912-4FED-8F16-51235F08A16C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{202002A4-0912-4FED-8F16-51235F08A16C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3D0DF61-1A22-4EEA-8A10-8FA977EAAF9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3D0DF61-1A22-4EEA-8A10-8FA977EAAF9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3D0DF61-1A22-4EEA-8A10-8FA977EAAF9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3D0DF61-1A22-4EEA-8A10-8FA977EAAF9B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1484A045-034F-4FB6-861A-B7992E09D0F5}
+	EndGlobalSection
+EndGlobal

@@ -23,7 +23,7 @@ let NilExt = 106uy
 let StringExt = 107uy
 
 [<Literal>]
-let ListExt = 108uy
+let ListExt = 108uy 
 
 [<Literal>]
 let BinaryExt = 109uy

@@ -4,7 +4,7 @@ open System
 open Xunit
 open FsUnit.Xunit
 
-open ErlangExternalTermFormat
+open EETF.Decode
 
 //let writeAndRead (s: string) =
 //    use p = new System.Diagnostics.Process()
@@ -30,18 +30,10 @@ let writeAndRead (s: string) =
     p.WaitForExit()
     output.Trim()
 
-let parseTermToBinaryResult (s: string) =
-    let stringSplitOptions = StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries
-    s.Replace("<", "")
-     .Replace(">", "")
-     .Split(',', stringSplitOptions)
-    |> Array.map (fun s -> s.Trim())
-    |> Array.map byte
-
 let writeAndDecode (s: string) =
     s
     |> writeAndRead
-    |> parseTermToBinaryResult
+    |> convertTermStringToBytes
     |> decodeTermFromBytes
 
 //[<Fact>]
@@ -55,15 +47,15 @@ let writeAndDecode (s: string) =
 //[<Fact>]
 //let ``Simple term to binary test`` () =
 //    let result =
-//        match writeAndRead "atom" |> (fun (s: string) -> s.Trim()) |> parseTermToBinaryResult with
+//        match writeAndRead "atom" |> (fun (s: string) -> s.Trim()) |> convertTermStringToBytes with
 //        | AtomExt s -> $":atom"
 //        | _ -> "fail"
 //    result |> should equal ":atom"
-//    //writeAndRead ":atom" |> parseTermToBinaryResult |> should equal [|131; 100; 0; 4; 97; 116; 111; 109|]
+//    //writeAndRead ":atom" |> convertTermStringToBytes |> should equal [|131; 100; 0; 4; 97; 116; 111; 109|]
 
 //[<Fact>]
 //let ``Decode as atom`` () =
-//    "testing" |> writeAndRead |> parseTermToBinaryResult |> decodeAsAtom |> should equal (Some "testing")
+//    "testing" |> writeAndRead |> convertTermStringToBytes |> decodeAsAtom |> should equal (Some "testing")
 
 open Hedgehog.Xunit
 
@@ -71,7 +63,7 @@ open Hedgehog.Xunit
 let ``Decoding atoms`` (atom: string) =
     atom
     |> writeAndRead
-    |> parseTermToBinaryResult
+    |> convertTermStringToBytes
     |> decodeAsAtom
     |> should equal (Some atom)*)
 
@@ -79,6 +71,15 @@ let ``Decoding atoms`` (atom: string) =
 [<Property>]
 let ``Reversing a list twice yields the original list`` (xs: int list) =
     List.rev (List.rev xs) = xs
+
+[<Fact>]
+let ``Converting a binary term string to an array of bytes`` () =
+    // The binary string "<<131, 97, 1>>" represents the Elixir integer `1`.
+    // Several string formats are supported, although "<<131, 97, 1>>" is the most common in Elixir and Erlang.
+    @"<<131, 97, 1>>" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
+    @"<<131 97 1>>" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
+    @"131, 97, 1" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
+    @"131 97 1" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
 
 [<Fact>]
 let ``Decode atom from stream`` () =
@@ -91,19 +92,23 @@ let ``Decode tuple from stream`` () =
 [<Fact>]
 let ``Decode tuple integers and floats from stream`` () =
     @"{1, 255, 10000, 3.14}" |> writeAndDecode
-    |> should equal (Erlang.Tuple [Erlang.SmallInteger 1uy; Erlang.SmallInteger 255uy; Erlang.Integer 10_000; Erlang.Float 3.14])
+    |> should equal (Erlang.Tuple [Erlang.Integer 1; Erlang.Integer 255; Erlang.Integer 10_000; Erlang.Float 3.14])
 
 [<Fact>]
 let ``Decode list from stream`` () =
     @"[1, 255, 10000, 3.14]" |> writeAndDecode
-    |> should equal (Erlang.List [Erlang.SmallInteger 1uy; Erlang.SmallInteger 255uy; Erlang.Integer 10_000; Erlang.Float 3.14; Erlang.Nil])
+    |> should equal (Erlang.List [Erlang.Integer 1; Erlang.Integer 255; Erlang.Integer 10_000; Erlang.Float 3.14; Erlang.Nil])
 
 [<Fact>]
 let ``Decode a small list of bytes (small integers) from stream`` () =
     @"[0, 1, 2, 3, 4]" |> writeAndDecode
-    |> should equal (Erlang.List [Erlang.SmallInteger 0uy; Erlang.SmallInteger 1uy; Erlang.SmallInteger 2uy; Erlang.SmallInteger 3uy; Erlang.SmallInteger 4uy])
+    |> should equal (Erlang.List [Erlang.Integer 0; Erlang.Integer 1; Erlang.Integer 2; Erlang.Integer 3; Erlang.Integer 4])
 
 [<Fact>]
 let ``Decode a big integer from stream`` () =
     let bigInteger = 100000000000000000000000000000000000000000000000000000I
     string bigInteger |> writeAndDecode |> should equal (Erlang.BigInteger bigInteger)
+
+[<Fact>]
+let ``Decode a map from stream`` () =
+    @"%{a: 1, b: 2}" |> writeAndDecode |> should equal (Erlang.Map [(Erlang.Atom "a", Erlang.Integer 1); (Erlang.Atom "b", Erlang.Integer 2)])

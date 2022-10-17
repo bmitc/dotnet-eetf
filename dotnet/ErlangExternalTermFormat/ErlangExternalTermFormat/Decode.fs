@@ -22,9 +22,22 @@ The Erlang external term format is defined here:
 https://www.erlang.org/doc/apps/erts/erl_ext_dist.html
 *)
 
+/// Converts a string representing an Erlang binary to a byte array. Supported format examples
+/// are "<<131, 97, 1>>"`, "<<131 97 1>>", "131, 97, 1", "131 97 1". Extra whitespace is ignored.
+/// Any other character besides number, comma, '<', '>', or whitespace will cause an error.
+let convertTermStringToBytes (s: string) =
+    try
+        let stringSplitOptions = StringSplitOptions.TrimEntries + StringSplitOptions.RemoveEmptyEntries
+        s.Trim('<').Trim('>').Replace(',', ' ').Split(' ', stringSplitOptions)
+        |> Array.map byte
+    with
+        | :? System.FormatException ->
+            let message = "String parsing or byte conversion failed. This is likely due to an improperly formatted binary string."
+            raise (System.ArgumentException message)
+
+/// Represents Erlang types
 [<RequireQualifiedAccess>]
 type Erlang =
-    | SmallInteger of uint8
     | Integer of int
     | Float of float
     | Tuple of Erlang list
@@ -32,13 +45,8 @@ type Erlang =
     | Binary of byte[]
     | List of Erlang list
     | BigInteger of bigint
-    | SmallBig of bigint
-    | LargeBig of bigint
     | Atom of string
-    | AtomUTF8 of string
-    | SmallAtomUTF8 of string
-    | AtomExt of string
-    | SmallAtomExt of string
+    | Map of (Erlang * Erlang) list
 
 let (|AtomUTF8Ext|_|) (bytes: byte[]) =
     match Seq.toList bytes with
@@ -99,29 +107,17 @@ let (|SmallTupleExt|_|) (bytes: byte[]) =
         match arity with
         | 0 -> Some (Erlang.Tuple [])
 
-
 let decodeAsAtomExt bytes =
     match (|AtomExt|_|) bytes with
     | Some x -> Some x
     | None -> None
 
-//let decodeTerm (bytes: byte[]) =
-//    let keepDecoding ((term, bytes): Erlang * byte[]) =
-//        match bytes with
-//        | [||] -> term
-//        | 
-//    match bytes with
-//    | AtomUTF8Ext (atom, bytes)      -> atom
-//    | SmallAtomUTF8Ext (atom, bytes) -> atom
-//    | AtomExt (atom, bytes)          -> atom
-//    | SmallAtomExt (atom, bytes)     -> atom
-//    | _                              -> raise (System.Exception "Failed to decode Erlang binary")
-
-
-let rec decodeTermFromStream (binary: BinaryReader) =
+/// Decode an Erlang term when represented as a BinaryReader
+let rec decodeTerm (binary: BinaryReader) =
     match binary.ReadByte() with
     | Tag.SmallIntegerExt  -> binary.ReadByte()
-                              |> Erlang.SmallInteger
+                              |> int
+                              |> Erlang.Integer
 
     | Tag.IntegerExt       -> binary.ReadBytes(4)
                               |> BinaryPrimitives.ReadInt32BigEndian
@@ -133,10 +129,14 @@ let rec decodeTermFromStream (binary: BinaryReader) =
                               |> Erlang.Float
 
     | Tag.SmallTupleExt    -> let arity = binary.ReadByte() |> int
-                              Erlang.Tuple [for x in 0..(arity-1) -> decodeTermFromStream binary]
+                              Erlang.Tuple [for x in 1..arity -> decodeTerm binary]
 
     | Tag.LargeTupleExt    -> let arity = binary.ReadBytes(2) |> BinaryPrimitives.ReadUInt16BigEndian |> int
-                              Erlang.Tuple [for x in 0..(arity-1) -> decodeTermFromStream binary]
+                              Erlang.Tuple [for x in 1..arity -> decodeTerm binary]
+
+    | Tag.MapExt           -> let arity = binary.ReadBytes(4) |> BinaryPrimitives.ReadUInt32BigEndian |> int
+                              [for x in 1..arity -> (decodeTerm binary, decodeTerm binary)]
+                              |> Erlang.Map
 
     | Tag.NilExt           -> Erlang.Nil
 
@@ -144,14 +144,14 @@ let rec decodeTermFromStream (binary: BinaryReader) =
                               |> BinaryPrimitives.ReadUInt16BigEndian
                               |> int
                               |> binary.ReadBytes
-                              |> Array.map Erlang.SmallInteger
+                              |> Array.map (int >> Erlang.Integer)
                               |> Array.toList
                               |> Erlang.List
 
     | Tag.ListExt          -> let length = binary.ReadBytes(4) // read length from four bytes
                                            |> BinaryPrimitives.ReadUInt32BigEndian
                                            |> int
-                              Erlang.List [for x in 0..length -> decodeTermFromStream binary]
+                              Erlang.List [for x in 1..length+1 -> decodeTerm binary]
 
     | Tag.BinaryExt        -> binary.ReadBytes(4) // read length from four bytes
                               |> BinaryPrimitives.ReadUInt32BigEndian
@@ -211,8 +211,18 @@ let rec decodeTermFromStream (binary: BinaryReader) =
                               |> binary.ReadBytes
                               |> Text.Encoding.Latin1.GetString
                               |> Erlang.Atom
+    | _                    -> raise (System.ArgumentException "The byte stream does not represent a supported Erlang term.")
 
+/// Decode an Erlang term when represented as a byte array
 let decodeTermFromBytes (bytes: byte[]) =
     match Array.splitAt 1 bytes with
-    | ( [|131uy|], elements ) -> elements |> MemoryStream |> BinaryReader |> decodeTermFromStream
-    | _ -> raise (System.Exception "Failed to decode Erlang binary")
+    | ( [|Tag.Version|], elements ) -> use memoryStream = new MemoryStream(elements)
+                                       use binaryReader = new BinaryReader(memoryStream)
+                                       decodeTerm binaryReader
+    | _                             -> raise (System.Exception "Failed to decode Erlang binary")
+
+/// Decode an Erlang term when represented as a string of bytes. Supported format examples
+/// are "<<131, 97, 1>>"`, "<<131 97 1>>", "131, 97, 1", "131 97 1". Extra whitespace is ignored.
+/// Any other character besides number, comma, '<', '>', or whitespace will cause an error.
+let decodeTermFromString (s: string) =
+    convertTermStringToBytes >> decodeTermFromBytes

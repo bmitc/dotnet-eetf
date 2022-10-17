@@ -1,10 +1,26 @@
-﻿module ErlangExternalTermFormat
+﻿/// Functions for decoding Erlang terms encoded in the external term format
+module EETF.Decode
 
 open System
 open System.Buffers.Binary
 open System.IO
 
-open EETF
+(*
+The Erlang external term format is of the form:
+
+|-----------------|-----|-----|------|
+| Number of Bytes |  1  |  1  |  N   |
+|-----------------|-----|-----|------|
+| Byte data       | 131 | Tag | Data |
+|-----------------|-----|-----|------|
+
+The version tag is only listed at the beginning of a term, and the Data bytes
+can contain several types, such as the case for maps, tuples, and lists, and
+so the Data bytes will also have Tag data for each instance of a type in Data.
+
+The Erlang external term format is defined here:
+https://www.erlang.org/doc/apps/erts/erl_ext_dist.html
+*)
 
 [<RequireQualifiedAccess>]
 type Erlang =

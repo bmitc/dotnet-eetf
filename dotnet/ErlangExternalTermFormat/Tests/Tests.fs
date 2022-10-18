@@ -4,6 +4,7 @@ open System
 open Xunit
 open FsUnit.Xunit
 
+open EETF.Type
 open EETF.Decode
 
 //let writeAndRead (s: string) =

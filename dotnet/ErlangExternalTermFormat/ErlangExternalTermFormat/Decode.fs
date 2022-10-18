@@ -7,6 +7,8 @@ open System.IO
 
 open Microsoft.FSharp.Collections
 
+open EETF.Type
+
 (*
 The Erlang external term format is of the form:
 
@@ -36,19 +38,6 @@ let convertTermStringToBytes (s: string) =
         | :? System.FormatException ->
             let message = "String parsing or byte conversion failed. This is likely due to an improperly formatted binary string."
             raise (System.ArgumentException message)
-
-/// Represents Erlang types
-[<RequireQualifiedAccess>]
-type Erlang =
-    | Integer of int
-    | Float of float
-    | Tuple of Erlang list
-    | Nil
-    | Binary of byte[]
-    | List of Erlang list
-    | BigInteger of bigint
-    | Atom of string
-    | Map of (Erlang * Erlang) list
 
 let (|AtomUTF8Ext|_|) (bytes: byte[]) =
     match Seq.toList bytes with

@@ -97,7 +97,12 @@ let ``Decode tuple integers and floats from stream`` () =
 [<Fact>]
 let ``Decode list from stream`` () =
     @"[1, 255, 10000, 3.14]" |> writeAndDecode
-    |> should equal (Erlang.List [Erlang.Integer 1; Erlang.Integer 255; Erlang.Integer 10_000; Erlang.Float 3.14; Erlang.Nil])
+    |> should equal (Erlang.List [Erlang.Integer 1; Erlang.Integer 255; Erlang.Integer 10_000; Erlang.Float 3.14])
+
+[<Fact>]
+let ``Decode an improper list from stream`` () =
+    @"[1, 255, 10000 | 3.14]" |> writeAndDecode
+    |> should equal (Erlang.List [Erlang.Integer 1; Erlang.Integer 255; Erlang.Integer 10_000; Erlang.Float 3.14])
 
 [<Fact>]
 let ``Decode a small list of bytes (small integers) from stream`` () =

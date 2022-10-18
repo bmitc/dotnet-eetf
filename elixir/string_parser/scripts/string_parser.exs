@@ -9,37 +9,59 @@ defmodule StringParser do
     |> parseAST()
   end
 
-  defp parseAST(term) when is_nil(term), do: term
-  defp parseAST(term) when is_atom(term), do: term
-  defp parseAST(term) when is_integer(term), do: term
-  defp parseAST(term) when is_float(term), do: term
-  defp parseAST(term) when is_binary(term), do: term
-  defp parseAST(term) when is_list(term), do: Enum.map(term, &parseAST/1)
+  def parseAST(term) when is_nil(term), do: term
+  def parseAST(term) when is_atom(term), do: term
+  def parseAST(term) when is_integer(term), do: term
+  def parseAST(term) when is_float(term), do: term
+  def parseAST(term) when is_binary(term), do: term
+  # def parseAST(term) when is_list(term), do: Enum.map(term, &parseAST/1)
 
-  defp parseAST({string_as_atom, _metadata, nil}) when is_atom(string_as_atom) do
+  def parseAST({string_as_atom, _metadata, nil}) when is_atom(string_as_atom) do
     Atom.to_string(string_as_atom)
   end
 
-  defp parseAST({a, b}), do: {parseAST(a), parseAST(b)}
+  def parseAST({a, b}), do: {parseAST(a), parseAST(b)}
 
-  defp parseAST({:{}, _metadata, elements}) do
+  def parseAST({:{}, _metadata, elements}) do
     elements
     |> Enum.map(&parseAST/1)
     |> List.to_tuple()
   end
 
-  defp parseAST({:%{}, _metadata, elements}) do
+  def parseAST({:%{}, _metadata, elements}) do
     elements
     |> Enum.map(&parseAST/1)
     |> Enum.into(%{})
   end
+
+  def parseAST([]) do
+    []
+  end
+
+  # Proper list
+  def parseAST([x | []]) do
+    [parseAST(x) | []]
+  end
+
+  def parseAST([x, {:|, _metadata, [a, b]}]) do
+    [parseAST(x) | [parseAST(a) | parseAST(b)]]
+  end
+
+  # Improper list ending
+  def parseAST({:|, _metadata, [a, b]}) do
+    [parseAST(a) | parseAST(b)]
+  end
+
+  def parseAST([x | y]) do
+    [parseAST(x) | parseAST(y)]
+  end
 end
 
-
 System.argv()
-#|> IO.inspect()
+# |> IO.inspect()
 |> List.first()
-#|> Enum.join(",")
+# |> Enum.join(",")
 |> StringParser.parse()
+# |> IO.inspect()
 |> :erlang.term_to_binary()
 |> IO.inspect()

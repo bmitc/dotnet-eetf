@@ -5,6 +5,8 @@ open System
 open System.Buffers.Binary
 open System.IO
 
+open Microsoft.FSharp.Collections
+
 (*
 The Erlang external term format is of the form:
 
@@ -112,6 +114,11 @@ let decodeAsAtomExt bytes =
     | Some x -> Some x
     | None -> None
 
+let private handleErlangList (lst: Erlang list) =
+    match List.tryLast lst with
+    | Some Erlang.Nil -> List.removeLast lst
+    | _               -> lst
+
 /// Decode an Erlang term when represented as a BinaryReader
 let rec decodeTerm (binary: BinaryReader) =
     match binary.ReadByte() with
@@ -129,13 +136,13 @@ let rec decodeTerm (binary: BinaryReader) =
                               |> Erlang.Float
 
     | Tag.SmallTupleExt    -> let arity = binary.ReadByte() |> int
-                              Erlang.Tuple [for x in 1..arity -> decodeTerm binary]
+                              Erlang.Tuple [for _ in 1..arity -> decodeTerm binary]
 
     | Tag.LargeTupleExt    -> let arity = binary.ReadBytes(2) |> BinaryPrimitives.ReadUInt16BigEndian |> int
-                              Erlang.Tuple [for x in 1..arity -> decodeTerm binary]
+                              Erlang.Tuple [for _ in 1..arity -> decodeTerm binary]
 
     | Tag.MapExt           -> let arity = binary.ReadBytes(4) |> BinaryPrimitives.ReadUInt32BigEndian |> int
-                              [for x in 1..arity -> (decodeTerm binary, decodeTerm binary)]
+                              [for _ in 1..arity -> (decodeTerm binary, decodeTerm binary)]
                               |> Erlang.Map
 
     | Tag.NilExt           -> Erlang.Nil
@@ -151,7 +158,9 @@ let rec decodeTerm (binary: BinaryReader) =
     | Tag.ListExt          -> let length = binary.ReadBytes(4) // read length from four bytes
                                            |> BinaryPrimitives.ReadUInt32BigEndian
                                            |> int
-                              Erlang.List [for x in 1..length+1 -> decodeTerm binary]
+                              [for _ in 1..(length + 1) -> decodeTerm binary]
+                              |> handleErlangList
+                              |> Erlang.List
 
     | Tag.BinaryExt        -> binary.ReadBytes(4) // read length from four bytes
                               |> BinaryPrimitives.ReadUInt32BigEndian
@@ -224,5 +233,4 @@ let decodeTermFromBytes (bytes: byte[]) =
 /// Decode an Erlang term when represented as a string of bytes. Supported format examples
 /// are "<<131, 97, 1>>"`, "<<131 97 1>>", "131, 97, 1", "131 97 1". Extra whitespace is ignored.
 /// Any other character besides number, comma, '<', '>', or whitespace will cause an error.
-let decodeTermFromString (s: string) =
-    convertTermStringToBytes >> decodeTermFromBytes
+let decodeTermFromString = convertTermStringToBytes >> decodeTermFromBytes

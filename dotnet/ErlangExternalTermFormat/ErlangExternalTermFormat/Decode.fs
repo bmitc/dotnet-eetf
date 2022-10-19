@@ -4,6 +4,7 @@ module EETF.Decode
 open System
 open System.Buffers.Binary
 open System.IO
+open System.Numerics
 
 open Microsoft.FSharp.Collections
 
@@ -166,6 +167,7 @@ let rec decodeTerm (binary: BinaryReader) =
                               binary.ReadBytes(length)
                               |> Array.mapi (fun index byte -> (bigint byte) * (pown B index))
                               |> Array.sum
+                              |> (fun i -> BigInteger.Multiply(i, bigint sign))
                               |> Erlang.BigInteger
 
     | Tag.LargeBigExt      -> let length = binary.ReadBytes(4) |> BinaryPrimitives.ReadUInt32BigEndian |> int
@@ -173,11 +175,11 @@ let rec decodeTerm (binary: BinaryReader) =
                                   match binary.ReadByte() with
                                   | 0uy     -> 1
                                   | 1uy | _ -> -1
-                              let B = 256
+                              let B = 256I
                               binary.ReadBytes(length)
-                              |> Array.mapi (fun index byte -> (int byte) * (pown B index))
+                              |> Array.mapi (fun index byte -> (bigint byte) * (pown B index))
                               |> Array.sum
-                              |> bigint
+                              |> (fun i -> BigInteger.Multiply(i, bigint sign))
                               |> Erlang.BigInteger
 
     | Tag.NewFloatExt      -> binary.ReadBytes(8)

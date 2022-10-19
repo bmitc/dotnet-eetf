@@ -1,4 +1,4 @@
-module Tests
+module EETF.Tests.Decode
 
 open System
 open Xunit
@@ -7,35 +7,7 @@ open FsUnit.Xunit
 open EETF.Type
 open EETF.Decode
 
-//let writeAndRead (s: string) =
-//    use p = new System.Diagnostics.Process()
-//    p.StartInfo.WorkingDirectory <- Environment.CurrentDirectory
-//    p.StartInfo.FileName <- "powershell"
-//    p.StartInfo.Arguments <- $"elixir term_to_binary.exs {s}"
-//    p.StartInfo.UseShellExecute <- false
-//    p.StartInfo.RedirectStandardOutput <- true
-//    p.Start() |> ignore
-//    let output = p.StandardOutput.ReadToEnd()
-//    p.WaitForExit()
-//    output.Trim()
-
-let writeAndRead (s: string) =
-    use p = new System.Diagnostics.Process()
-    p.StartInfo.WorkingDirectory <- System.IO.Path.Join(Environment.CurrentDirectory, @"../../../../../../elixir/string_parser")
-    p.StartInfo.FileName <- "powershell"
-    p.StartInfo.Arguments <- $"elixir scripts/string_parser.exs '{s}'"
-    p.StartInfo.UseShellExecute <- false
-    p.StartInfo.RedirectStandardOutput <- true
-    p.Start() |> ignore
-    let output = p.StandardOutput.ReadToEnd()
-    p.WaitForExit()
-    output.Trim()
-
-let writeAndDecode (s: string) =
-    s
-    |> writeAndRead
-    |> convertTermStringToBytes
-    |> decodeTermFromBytes
+open EETF.Tests.Utilities
 
 //[<Fact>]
 //let ``Simple atom test`` () =
@@ -85,6 +57,7 @@ let ``Converting a binary term string to an array of bytes`` () =
 [<Fact>]
 let ``Decode atom from stream`` () =
     ":testing" |> writeAndDecode |> should equal (Erlang.Atom "testing")
+    //":\"atom with spaces\"" |> writeAndDecode |> should equal (Erlang.Atom "\"atom with spaces\"")
 
 [<Fact>]
 let ``Decode tuple from stream`` () =

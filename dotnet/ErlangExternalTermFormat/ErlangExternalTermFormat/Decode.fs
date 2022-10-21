@@ -40,180 +40,120 @@ let convertTermStringToBytes (s: string) =
             let message = "String parsing or byte conversion failed. This is likely due to an improperly formatted binary string."
             raise (System.ArgumentException message)
 
-let (|AtomUTF8Ext|_|) (bytes: byte[]) =
-    match Seq.toList bytes with
-    | Tag.AtomUTF8Ext :: l1 :: l2 :: rest ->
-        let length = BinaryPrimitives.ReadUInt16BigEndian(ReadOnlySpan [|l1; l2|]) |> int
-        let (atomBytes, remainingBytes) = List.splitAt length  rest
-        let atom = atomBytes
-                   |> Seq.toArray
-                   |> Text.Encoding.UTF8.GetString
-        Some (atom, remainingBytes |> List.toArray)
-    | _ -> None
-
-let (|SmallAtomUTF8Ext|_|) (bytes: byte[]) =
-    match Seq.toList bytes with
-    | Tag.SmallAtomUTF8Ext :: length :: rest ->
-        let length = length |> int
-        let (atomBytes, remainingBytes) = List.splitAt length  rest
-        let atom = atomBytes
-                   |> Seq.toArray
-                   |> Text.Encoding.UTF8.GetString
-        Some (atom, remainingBytes |> List.toArray)
-    | _ -> None
-
-let (|AtomExt|_|) (bytes: byte[]) =
-    match Seq.toList bytes with
-    | Tag.AtomExt :: l1 :: l2 :: rest ->
-        let length = BinaryPrimitives.ReadUInt16BigEndian(ReadOnlySpan [|l1; l2|]) |> int
-        let (atomBytes, remainingBytes) = List.splitAt length  rest
-        let atom = atomBytes
-                   |> Seq.toArray
-                   |> Text.Encoding.Latin1.GetString
-        Some (atom, remainingBytes |> List.toArray)
-    | _ -> None
-
-let (|SmallAtomExt|_|) (bytes: byte[]) =
-    match Seq.toList bytes with
-    | Tag.AtomExt :: length :: rest ->
-        let length = length |> int
-        let (atomBytes, remainingBytes) = List.splitAt length  rest
-        let atom = atomBytes
-                   |> Seq.toArray
-                   |> Text.Encoding.Latin1.GetString
-        Some (atom, remainingBytes |> List.toArray)
-    | _ -> None
-
-let (|Atom|_|) (bytes: byte[]) =
-    match bytes with
-    | AtomUTF8Ext atom      -> Some atom
-    | SmallAtomUTF8Ext atom -> Some atom
-    | AtomExt atom          -> Some atom
-    | SmallAtomExt atom     -> Some atom
-    | _                     -> None
-
-let (|SmallTupleExt|_|) (bytes: byte[]) =
-    match Seq.toList bytes with
-    | Tag.SmallTupleExt :: arity :: elements ->
-        let arity = arity |> int
-        match arity with
-        | 0 -> Some (Erlang.Tuple [])
-
-let decodeAsAtomExt bytes =
-    match (|AtomExt|_|) bytes with
-    | Some x -> Some x
-    | None -> None
-
-let private handleErlangList (lst: Erlang list) =
+let private handleErlangList (lst: ErlangTerm list) =
     match List.tryLast lst with
-    | Some Erlang.Nil -> List.removeLast lst
-    | _               -> lst
+    | Some Nil -> List.removeLast lst
+    | _        -> lst
 
-/// Decode an Erlang term when represented as a BinaryReader
-let rec decodeTerm (binary: BinaryReader) =
-    match binary.ReadByte() with
-    | Tag.SmallIntegerExt  -> binary.ReadByte()
+/// Decode an Erlang term from the BinaryReader's underlying Stream that contains
+/// an Erlang term encoded according to the Erlang external term format.
+/// See https://www.erlang.org/doc/apps/erts/erl_ext_dist.html
+let rec decodeTerm (reader: BinaryReader) =
+    match reader.ReadByte() with
+    | Tag.SmallIntegerExt  -> reader.ReadByte()
                               |> int
-                              |> Erlang.Integer
+                              |> ErlangTerm.Integer
 
-    | Tag.IntegerExt       -> binary.ReadBytes(4)
+    | Tag.IntegerExt       -> reader.ReadBytes(4)
                               |> BinaryPrimitives.ReadInt32BigEndian
-                              |> Erlang.Integer
+                              |> ErlangTerm.Integer
 
-    | Tag.FloatExt         -> binary.ReadBytes(31)
+    | Tag.FloatExt         -> reader.ReadBytes(31)
                               |> Text.Encoding.ASCII.GetString
                               |> float
-                              |> Erlang.Float
+                              |> ErlangTerm.Float
 
-    | Tag.SmallTupleExt    -> let arity = binary.ReadByte() |> int
-                              Erlang.Tuple [for _ in 1..arity -> decodeTerm binary]
+    | Tag.SmallTupleExt    -> let arity = reader.ReadByte() |> int
+                              ErlangTerm.Tuple [for _ in 1..arity -> decodeTerm reader]
 
-    | Tag.LargeTupleExt    -> let arity = binary.ReadBytes(2) |> BinaryPrimitives.ReadUInt16BigEndian |> int
-                              Erlang.Tuple [for _ in 1..arity -> decodeTerm binary]
+    | Tag.LargeTupleExt    -> let arity = reader.ReadBytes(2) |> BinaryPrimitives.ReadUInt16BigEndian |> int
+                              ErlangTerm.Tuple [for _ in 1..arity -> decodeTerm reader]
 
-    | Tag.MapExt           -> let arity = binary.ReadBytes(4) |> BinaryPrimitives.ReadUInt32BigEndian |> int
-                              [for _ in 1..arity -> (decodeTerm binary, decodeTerm binary)]
-                              |> Erlang.Map
+    | Tag.MapExt           -> let arity = reader.ReadBytes(4) |> BinaryPrimitives.ReadUInt32BigEndian |> int
+                              [for _ in 1..arity -> (decodeTerm reader, decodeTerm reader)]
+                              |> ErlangTerm.Map
 
-    | Tag.NilExt           -> Erlang.Nil
+    | Tag.NilExt           -> ErlangTerm.Nil
 
-    | Tag.StringExt        -> binary.ReadBytes(2) // read length from two bytes
+    | Tag.StringExt        -> reader.ReadBytes(2) // read length from two bytes
                               |> BinaryPrimitives.ReadUInt16BigEndian
                               |> int
-                              |> binary.ReadBytes
-                              |> Array.map (int >> Erlang.Integer)
+                              |> reader.ReadBytes
+                              |> Array.map (int >> ErlangTerm.Integer)
                               |> Array.toList
-                              |> Erlang.List
+                              |> ErlangTerm.List
 
-    | Tag.ListExt          -> let length = binary.ReadBytes(4) // read length from four bytes
+    | Tag.ListExt          -> let length = reader.ReadBytes(4) // read length from four bytes
                                            |> BinaryPrimitives.ReadUInt32BigEndian
                                            |> int
-                              [for _ in 1..(length + 1) -> decodeTerm binary]
+                              [for _ in 1..(length + 1) -> decodeTerm reader]
                               |> handleErlangList
-                              |> Erlang.List
+                              |> ErlangTerm.List
 
-    | Tag.BinaryExt        -> binary.ReadBytes(4) // read length from four bytes
+    | Tag.BinaryExt        -> reader.ReadBytes(4) // read length from four bytes
                               |> BinaryPrimitives.ReadUInt32BigEndian
                               |> int
-                              |> binary.ReadBytes
-                              |> Erlang.Binary
+                              |> reader.ReadBytes
+                              |> ErlangTerm.Binary
 
-    | Tag.SmallBigExt      -> let length = binary.ReadByte() |> int
+    | Tag.SmallBigExt      -> let length = reader.ReadByte() |> int
                               let sign =
-                                  match binary.ReadByte() with
+                                  match reader.ReadByte() with
                                   | 0uy     -> 1
                                   | 1uy | _ -> -1
                               let B = 256I
-                              binary.ReadBytes(length)
+                              reader.ReadBytes(length)
                               |> Array.mapi (fun index byte -> (bigint byte) * (pown B index))
                               |> Array.sum
                               |> (fun i -> BigInteger.Multiply(i, bigint sign))
-                              |> Erlang.BigInteger
+                              |> ErlangTerm.BigInteger
 
-    | Tag.LargeBigExt      -> let length = binary.ReadBytes(4) |> BinaryPrimitives.ReadUInt32BigEndian |> int
+    | Tag.LargeBigExt      -> let length = reader.ReadBytes(4) |> BinaryPrimitives.ReadUInt32BigEndian |> int
                               let sign =
-                                  match binary.ReadByte() with
+                                  match reader.ReadByte() with
                                   | 0uy     -> 1
                                   | 1uy | _ -> -1
                               let B = 256I
-                              binary.ReadBytes(length)
+                              reader.ReadBytes(length)
                               |> Array.mapi (fun index byte -> (bigint byte) * (pown B index))
                               |> Array.sum
                               |> (fun i -> BigInteger.Multiply(i, bigint sign))
-                              |> Erlang.BigInteger
+                              |> ErlangTerm.BigInteger
 
-    | Tag.NewFloatExt      -> binary.ReadBytes(8)
+    | Tag.NewFloatExt      -> reader.ReadBytes(8)
                               |> BinaryPrimitives.ReadDoubleBigEndian
-                              |> Erlang.Float
+                              |> ErlangTerm.Float
 
-    | Tag.AtomUTF8Ext      -> binary.ReadBytes(2) // read length from two bytes
+    | Tag.AtomUTF8Ext      -> reader.ReadBytes(2) // read length from two bytes
                               |> BinaryPrimitives.ReadUInt16BigEndian
                               |> int
-                              |> binary.ReadBytes
+                              |> reader.ReadBytes
                               |> Text.Encoding.UTF8.GetString
-                              |> Erlang.Atom
+                              |> ErlangTerm.Atom
 
-    | Tag.SmallAtomUTF8Ext -> binary.ReadByte() // read length from one byte
+    | Tag.SmallAtomUTF8Ext -> reader.ReadByte() // read length from one byte
                               |> int
-                              |> binary.ReadBytes
+                              |> reader.ReadBytes
                               |> Text.Encoding.UTF8.GetString
-                              |> Erlang.Atom
+                              |> ErlangTerm.Atom
 
-    | Tag.AtomExt          -> binary.ReadBytes(2) // read length from two bytes
+    | Tag.AtomExt          -> reader.ReadBytes(2) // read length from two bytes
                               |> BinaryPrimitives.ReadUInt16BigEndian
                               |> int
-                              |> binary.ReadBytes
+                              |> reader.ReadBytes
                               |> Text.Encoding.Latin1.GetString
-                              |> Erlang.Atom
+                              |> ErlangTerm.Atom
 
-    | Tag.SmallAtomExt     -> binary.ReadByte() // read length from one byte
+    | Tag.SmallAtomExt     -> reader.ReadByte() // read length from one byte
                               |> int
-                              |> binary.ReadBytes
+                              |> reader.ReadBytes
                               |> Text.Encoding.Latin1.GetString
-                              |> Erlang.Atom
+                              |> ErlangTerm.Atom
     | _                    -> raise (System.ArgumentException "The byte stream does not represent a supported Erlang term.")
 
-/// Decode an Erlang term when represented as a byte array
+/// Decode an Erlang term from a byte array that contains an Erlang
+/// term encoded according to the Erlang external term format.
+/// See https://www.erlang.org/doc/apps/erts/erl_ext_dist.html
 let decodeTermFromBytes (bytes: byte[]) =
     match Array.splitAt 1 bytes with
     | ( [|Tag.Version|], elements ) -> use memoryStream = new MemoryStream(elements)
@@ -224,4 +164,5 @@ let decodeTermFromBytes (bytes: byte[]) =
 /// Decode an Erlang term when represented as a string of bytes. Supported format examples
 /// are "<<131, 97, 1>>"`, "<<131 97 1>>", "131, 97, 1", "131 97 1". Extra whitespace is ignored.
 /// Any other character besides number, comma, '<', '>', or whitespace will cause an error.
+/// See https://www.erlang.org/doc/apps/erts/erl_ext_dist.html
 let decodeTermFromString = convertTermStringToBytes >> decodeTermFromBytes

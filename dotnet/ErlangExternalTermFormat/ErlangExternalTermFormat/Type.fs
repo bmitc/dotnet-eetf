@@ -1,15 +1,15 @@
-﻿module EETF.Type
+﻿/// Provides a type representing Erlang terms
+module EETF.Type
 
-/// Represents Erlang types that can be encoded from F# to the Erlang external term
+/// Represents Erlang terms that can be encoded from F# to the Erlang external term
 /// format or decoded from the term format to F#
-[<RequireQualifiedAccess>]
-type Erlang =
+type ErlangTerm =
     | Integer of int
     | Float of float
-    | Tuple of Erlang list
+    | Tuple of ErlangTerm list
     | Nil
     | Binary of byte[]
-    | List of Erlang list
+    | List of ErlangTerm list
     | BigInteger of bigint
     | Atom of string
-    | Map of (Erlang * Erlang) list
+    | Map of (ErlangTerm * ErlangTerm) list

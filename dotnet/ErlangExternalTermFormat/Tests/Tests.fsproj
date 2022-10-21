@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Include="Utilities.fs" />
+    <Compile Include="Properties.fs" />
     <Compile Include="Encode.fs" />
     <Compile Include="Decode.fs" />
     <Compile Include="Program.fs" />

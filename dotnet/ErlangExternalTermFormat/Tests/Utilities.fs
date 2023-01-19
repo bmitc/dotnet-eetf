@@ -28,7 +28,7 @@ let writeAndRead (s: string) =
             "bash"
     use p = new System.Diagnostics.Process()
     p.StartInfo.WorkingDirectory <- System.IO.Path.Join(Environment.CurrentDirectory, @"../../../../../../elixir/string_parser")
-    p.StartInfo.FileName <- "powershell"
+    p.StartInfo.FileName <- filename
     p.StartInfo.Arguments <- $"elixir scripts/string_parser.exs '{s}'"
     p.StartInfo.UseShellExecute <- false
     p.StartInfo.RedirectStandardOutput <- true

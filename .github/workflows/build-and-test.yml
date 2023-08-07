@@ -1,0 +1,107 @@
+name: build and test
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.fs"
+      - "**.fsproj"
+      - "**.ex"
+      - "**.exs"
+
+env:
+  DOTNET_VERSION: "7.0" # The .NET SDK version to use
+
+jobs:
+  dotnet-build-and-test:
+    name: build-and-test-${{matrix.os}}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest] # macOS-latest
+
+    steps:
+      # On the Windows runner, the line ending conversions are enabled
+      - name: Disable Git line ending conversions
+        run: git config --global core.autocrlf false
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      ##################################################
+      #### EETF F# project #############################
+      ##################################################
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install F# project dependencies
+        run: dotnet restore
+        working-directory: dotnet/ErlangExternalTermFormat
+
+      - name: Build F# project
+        run: dotnet build --configuration Release --no-restore
+        working-directory: dotnet/ErlangExternalTermFormat
+
+      - name: Test F# project
+        run: dotnet test --no-restore --verbosity normal
+        working-directory: dotnet/ErlangExternalTermFormat
+
+      ##################################################
+      #### StringParser Elixir project #################
+      ##################################################
+
+      - name: Install Erlang/OTP, Elixir, and Hex
+        uses: erlef/setup-beam@v1
+        id: beam
+        with:
+          otp-version: "26"
+          elixir-version: "1.15.4"
+          version-type: strict
+          install-hex: true
+
+      # Don't cache PLTs based on mix.lock hash, as Dialyzer can incrementally update even old ones
+      # Cache key based on Elixir & Erlang version (also useful when running in matrix)
+      - name: Restore PLT cache
+        uses: actions/cache@v3
+        id: plt_cache
+        with:
+          key: |
+            ${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-plt
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-plt
+          path: |
+            priv/plts
+
+      - name: "StringParser: Install dependencies"
+        run: mix deps.get
+        working-directory: elixir/string_parser
+
+      - name: "StringParser: Compile"
+        run: mix compile --warnings-as-errors
+        working-directory: elixir/string_parser
+
+      - name: "StringParser: Run tests"
+        run: mix test --warnings-as-errors
+        working-directory: elixir/string_parser
+
+      - name: "StringParser: Check formatting"
+        run: mix format --check-formatted
+        working-directory: elixir/string_parser
+
+      # - name: "StringParser: Run Credo checks"
+      #   run: mix credo
+      #   working-directory: elixir/string_parser
+
+      # # Create PLTs if no cache is found
+      # - name: "StringParser: Create PLTs"
+      #   if: steps.plt_cache.outputs.cache-hit != 'true'
+      #   run: mix dialyzer --plt
+      #   working-directory: elixir/string_parser
+
+      # - name: "StringParser: Run Dialyzer"
+      #   run: mix dialyzer
+      #   working-directory: elixir/string_parser

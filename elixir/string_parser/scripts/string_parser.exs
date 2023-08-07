@@ -62,10 +62,11 @@ end
 # differences, so that should also be checked).
 
 System.argv()
-# |> IO.inspect()
+# |> IO.inspect(label: "These are the arguments")
 |> List.first()
+# |> IO.inspect(label: "First element")
 # |> Enum.join(",")
 |> StringParser.parse()
-# |> IO.inspect()
+# |> IO.inspect(label: "After parsing")
 |> :erlang.term_to_binary()
 |> IO.inspect()

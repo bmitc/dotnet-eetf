@@ -30,6 +30,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      ##################################################
+      #### Setup .NET ##################################
+      ##################################################
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      ##################################################
+      #### Setup Erlang and Elixir #####################
+      ##################################################
+
+      - name: Install Erlang/OTP, Elixir, and Hex
+        uses: erlef/setup-beam@v1
+        id: beam
+        with:
+          otp-version: "26"
+          elixir-version: "1.15.4"
+          version-type: strict
+          install-hex: true
+
+      ##################################################
+      #### Debugging steps #############################
+      ##################################################
+
       #### Main working directory ####
 
       - name: Print working directory
@@ -79,11 +105,6 @@ jobs:
       #### EETF F# project #############################
       ##################################################
 
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
       - name: Install F# project dependencies
         run: dotnet restore
         working-directory: dotnet/ErlangExternalTermFormat
@@ -99,15 +120,6 @@ jobs:
       ##################################################
       #### StringParser Elixir project #################
       ##################################################
-
-      - name: Install Erlang/OTP, Elixir, and Hex
-        uses: erlef/setup-beam@v1
-        id: beam
-        with:
-          otp-version: "26"
-          elixir-version: "1.15.4"
-          version-type: strict
-          install-hex: true
 
       # Don't cache PLTs based on mix.lock hash, as Dialyzer can incrementally update even old ones
       # Cache key based on Elixir & Erlang version (also useful when running in matrix)

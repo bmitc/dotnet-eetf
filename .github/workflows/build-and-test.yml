@@ -20,6 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest] # macOS-latest
+    if: always()
 
     steps:
       # On the Windows runner, the line ending conversions are enabled
@@ -29,17 +30,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      #### Main working directory ####
+
+      - name: Print working directory
+        run: pwd
+
+      - name: List all files
+        run: tree /F /A
+        if: matrix.os == 'windows-latest'
+
       - name: List all files
         run: tree
+        if: matrix.os == 'ubuntu-latest'
+
+      #### F# project working directory ####
+
+      - name: Print working directory for F# project
+        run: pwd
+        working-directory: dotnet/ErlangExternalTermFormat
 
       - name: List files in F# project directory
+        run: tree /F /A
+        if: matrix.os == 'windows-latest'
         working-directory: dotnet/ErlangExternalTermFormat
+
+      - name: List files in F# project directory
         run: tree
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: dotnet/ErlangExternalTermFormat
+
+      #### Elixir project working directory
+
+      - name: Print working directory for Elixir project
+        run: pwd
+        working-directory: elixir/string_parser
 
       - name: List files in Elixir project directory
+        run: tree /F /A
+        if: matrix.os == 'windows-latest'
         working-directory: elixir/string_parser
+
+      - name: List files in Elixir project directory
         run: tree
-      
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: elixir/string_parser
+
       ##################################################
       #### EETF F# project #############################
       ##################################################
@@ -58,7 +93,7 @@ jobs:
         working-directory: dotnet/ErlangExternalTermFormat
 
       - name: Test F# project
-        run: dotnet test --no-restore --verbosity normal
+        run: dotnet test --no-restore --verbosity minimal
         working-directory: dotnet/ErlangExternalTermFormat
 
       ##################################################

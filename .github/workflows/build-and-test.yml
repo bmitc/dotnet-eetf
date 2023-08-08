@@ -47,7 +47,7 @@ jobs:
         uses: erlef/setup-beam@v1
         id: beam
         with:
-          otp-version: "26"
+          otp-version: "26.0.2"
           elixir-version: "1.15.4"
           version-type: strict
           install-hex: true
@@ -61,11 +61,11 @@ jobs:
       - name: Print working directory
         run: pwd
 
-      - name: List all files
+      - name: List all files [Windows]
         run: tree /F /A
         if: matrix.os == 'windows-latest'
 
-      - name: List all files
+      - name: List all files [Ubuntu]
         run: tree
         if: matrix.os == 'ubuntu-latest'
 
@@ -75,12 +75,12 @@ jobs:
         run: pwd
         working-directory: dotnet/ErlangExternalTermFormat
 
-      - name: List files in F# project directory
+      - name: List files in F# project directory [Windows]
         run: tree /F /A
         if: matrix.os == 'windows-latest'
         working-directory: dotnet/ErlangExternalTermFormat
 
-      - name: List files in F# project directory
+      - name: List files in F# project directory [Ubuntu]
         run: tree
         if: matrix.os == 'ubuntu-latest'
         working-directory: dotnet/ErlangExternalTermFormat
@@ -91,12 +91,12 @@ jobs:
         run: pwd
         working-directory: elixir/string_parser
 
-      - name: List files in Elixir project directory
+      - name: List files in Elixir project directory [Windows]
         run: tree /F /A
         if: matrix.os == 'windows-latest'
         working-directory: elixir/string_parser
 
-      - name: List files in Elixir project directory
+      - name: List files in Elixir project directory [Ubuntu]
         run: tree
         if: matrix.os == 'ubuntu-latest'
         working-directory: elixir/string_parser

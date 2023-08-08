@@ -1,3 +1,5 @@
+[![build and test](https://github.com/bmitc/dotnet-eetf/actions/workflows/build-and-test.yml/badge.svg?branch=main)](https://github.com/bmitc/dotnet-eetf/actions/workflows/build-and-test.yml)
+
 # EETF.NET
  
 This is an F# library to encode and decode values in the Erlang external term format.

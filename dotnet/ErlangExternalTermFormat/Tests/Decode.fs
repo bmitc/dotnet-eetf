@@ -58,3 +58,20 @@ let ``Decode a big integer from stream`` () =
 [<Fact>]
 let ``Decode a map from stream`` () =
     @"%{a: 1, b: 2}" |> writeAndDecode |> should equal (ErlangTerm.Map [(ErlangTerm.Atom "a", ErlangTerm.Integer 1); (ErlangTerm.Atom "b", ErlangTerm.Integer 2)])
+
+[<Fact(Skip = "Writing the string to standard out and/or parsing the string in Elixir isn't working correctly")>]
+let ``Decode a nested map from stream`` () =
+    let expectedDecodedTerm =
+        Map [
+            Atom "a", Integer 1
+            Atom "b", Integer 2
+            binaryFromString "a_map", Map [
+                binaryFromString "test", Map [
+                    Atom "another", Float 4.18
+                ]
+            ]
+        ]
+
+    """%{a: 1, b: 2, "a_map" => %{"test"=> %{:another => 4.18}"""
+    |> writeAndDecode
+    |> should equal expectedDecodedTerm

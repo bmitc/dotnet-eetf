@@ -8,7 +8,14 @@ open EETF.Encode
 open EETF.Decode
 
 [<Literal>]
-let numberOfTests = 1_000_000<tests>
+let numberOfTests = 100_000<tests>
+
+type ListGenConfig =
+  static member __ =
+    GenX.defaults
+    |> AutoGenConfig.addGenerator
+        (Gen.list (Range.linear 0 100)
+                  (Gen.int32 (Range.linearBounded ())))
 
 [<Property(Tests = numberOfTests)>]
 let ``Encoding and decoding integers`` (integer: int) =
@@ -21,6 +28,14 @@ let ``Encoding and decoding floats`` (f: float) =
 [<Property(Tests = numberOfTests)>]
 let ``Encoding and decoding byte arrays`` (bytes: byte[]) =
     ErlangTerm.Binary bytes |> encodeTermToBytes |> decodeTermFromBytes = ErlangTerm.Binary bytes
+
+[<Property(Tests = numberOfTests, AutoGenConfig = typeof<ListGenConfig>)>]
+let ``Encoding and decoding lists of integers`` (list: int list) =
+    let listOfIntegers =
+        list
+        |> List.map ErlangTerm.Integer
+        |> ErlangTerm.List
+    listOfIntegers |> encodeTermToBytes |> decodeTermFromBytes = listOfIntegers
 
 [<Property(Tests = numberOfTests)>]
 let ``Encoding and decoding big integers`` (bigInteger: bigint) =

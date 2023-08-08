@@ -28,9 +28,14 @@ let writeAndRead (s: string) =
         |> IO.Path.GetFullPath
 
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
+        // The elixir.bat script cannot be called directly as the FileName for some reason
+        // due to the Elixir script and how it calls Erlang, perhaps because of some environment
+        // issue. So the script is launched via PowerShell.
         p.StartInfo.FileName <- "powershell"
         p.StartInfo.Arguments <- $"elixir.bat scripts/string_parser.exs '{s}'"
     else
+        // It isn't clear why double-quotes are needed, but single quotes do not properly
+        // handle spaces on Linux, or at least Ubuntu.
         p.StartInfo.FileName <- "elixir"
         p.StartInfo.Arguments <- $"scripts/string_parser.exs \"{s}\""
     
@@ -56,5 +61,4 @@ let writeAndReadAsBytes (s: string) =
 let writeAndDecode (s: string) =
     s
     |> writeAndRead
-    |> convertTermStringToBytes
-    |> decodeTermFromBytes
+    |> decodeTermFromString

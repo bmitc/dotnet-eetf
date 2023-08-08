@@ -29,6 +29,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: List all files
+        run: tree
+
+      - name: List files in F# project directory
+        working-directory: dotnet/ErlangExternalTermFormat
+        run: tree
+
+      - name: List files in Elixir project directory
+        working-directory: elixir/string_parser
+        run: tree
+      
       ##################################################
       #### EETF F# project #############################
       ##################################################

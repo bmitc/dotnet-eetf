@@ -13,12 +13,13 @@ open EETF.Tests.Utilities
 let ``Converting a binary term string to an array of bytes`` () =
     // The binary string "<<131, 97, 1>>" represents the Elixir integer `1`.
     // Several string formats are supported, although "<<131, 97, 1>>" is the most common in Elixir and Erlang.
-    @"<<131, 97, 1>>" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
-    @"<<131,97,1>>" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
-    @"<<131 97 1>>" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
-    @"131, 97, 1" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
-    @"131,97,1" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
-    @"131 97 1" |> convertTermStringToBytes |> should equal [|131uy; 97uy; 1uy|]
+    let expected = [|131uy; 97uy; 1uy|]
+    @"<<131, 97, 1>>" |> convertTermStringToBytes |> should equal expected
+    @"<<131,97,1>>"   |> convertTermStringToBytes |> should equal expected
+    @"<<131 97 1>>"   |> convertTermStringToBytes |> should equal expected
+    @"131, 97, 1"     |> convertTermStringToBytes |> should equal expected
+    @"131,97,1"       |> convertTermStringToBytes |> should equal expected
+    @"131 97 1"       |> convertTermStringToBytes |> should equal expected
 
 [<Fact>]
 let ``Decode atom from stream`` () =

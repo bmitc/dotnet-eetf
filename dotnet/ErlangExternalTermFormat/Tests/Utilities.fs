@@ -22,7 +22,10 @@ open EETF.Decode
 /// Example: writeAndRead ":test" = "<<131, 100, 0, 4, 116, 101, 115, 116>>"
 let writeAndRead (s: string) =
     use p = new System.Diagnostics.Process()
-    p.StartInfo.WorkingDirectory <- System.IO.Path.Join(Environment.CurrentDirectory, @"../../../../../../elixir/string_parser")
+    p.StartInfo.WorkingDirectory <-
+        (Environment.CurrentDirectory, @"../../../../../../elixir/string_parser")
+        |> IO.Path.Join
+        |> IO.Path.GetFullPath
 
     if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
         p.StartInfo.FileName <- "powershell"

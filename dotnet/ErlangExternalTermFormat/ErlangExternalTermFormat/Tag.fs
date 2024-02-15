@@ -3,7 +3,7 @@
 module EETF.Tag
 
 (*
-This modulue gives a list of all supported tags. The terms and tags
+This module gives a list of all supported tags. The terms and tags
 are defined here: https://www.erlang.org/doc/apps/erts/erl_ext_dist.html
 
 The following terms/tags are supported:
